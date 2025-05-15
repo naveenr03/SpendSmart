@@ -1,15 +1,20 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import LandingPage from './pages/LandingPage'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-    <h1 className='italic'> Hello </h1>
-    </>
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Toaster position="top-right" />
+        <main className="container mx-auto px-4 py-8">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   )
 }
 
