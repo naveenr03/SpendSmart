@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import LandingPage from './pages/LandingPage'
+import ManualEntryPage from './pages/ManualEntryPage'
 import './App.css'
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <main className="container mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/manual-entry" element={<ManualEntryPage />} />
           </Routes>
         </main>
       </div>
