@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { useTransactions } from '../context/TransactionContext'
+import toast from 'react-hot-toast'
 
 const categories = [
   'Food & Dining',
@@ -15,6 +17,7 @@ const categories = [
 
 const ManualEntryPage = () => {
   const navigate = useNavigate()
+  const { addTransaction } = useTransactions()
   const [formData, setFormData] = useState({
     amount: '',
     merchant: '',
@@ -33,8 +36,30 @@ const ManualEntryPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    // TODO: Handle form submission
-    console.log('Form submitted:', formData)
+    
+    // Validate amount
+    if (isNaN(formData.amount) || formData.amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+
+    // Create transaction object
+    const transaction = {
+      amount: parseFloat(formData.amount),
+      merchant: formData.merchant.trim(),
+      date: formData.date,
+      category: formData.category,
+      description: formData.description.trim()
+    }
+
+    // Add transaction
+    addTransaction(transaction)
+    
+    // Show success message
+    toast.success('Expense added successfully')
+    
+    // Navigate back to home
+    navigate('/')
   }
 
   return (
