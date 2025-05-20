@@ -1,18 +1,20 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import LandingPage from './pages/LandingPage'
-import ManualEntryPage from './pages/ManualEntryPage'
+import AddExpensePage from './pages/AddExpensePage'
+import DashboardPage from './pages/DashboardPage'
 import './App.css'
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <Toaster position="top-right" />
-        <main className="container mx-auto px-4 py-8">
+        <main>
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/manual-entry" element={<ManualEntryPage />} />
+            <Route path="/add-expense" element={<AddExpensePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Routes>
         </main>
       </div>

@@ -1,121 +1,79 @@
-import { useState } from 'react'
-import { ArrowUpTrayIcon, PlusIcon, ChartBarIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { Link } from 'react-router-dom'
+import { ArrowUpTrayIcon, PlusCircleIcon, ChartBarIcon } from '@heroicons/react/24/outline'
+import { motion } from 'framer-motion'
 
-const LandingPage = () => {
-  const [isDragging, setIsDragging] = useState(false)
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files?.[0]
-    if (file && file.type === 'text/xml') {
-      // TODO: Handle file upload
-      console.log('File selected:', file)
-    } else {
-      // TODO: Show error toast
-      console.log('Please upload an XML file')
-    }
-  }
-
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file && file.type === 'text/xml') {
-      // TODO: Handle file upload
-      console.log('File dropped:', file)
-    } else {
-      // TODO: Show error toast
-      console.log('Please upload an XML file')
-    }
-  }
-
+export default function LandingPage() {
   return (
-    <div className="h-screen bg-gray-50">
-      {/* Top Navigation */}
-      <div className="absolute top-0 right-0 p-6 flex items-center space-x-6">
-        <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">
-          <ChartBarIcon className="h-6 w-6" />
-        </Link>
-        <Link to="/guide" className="text-gray-600 hover:text-gray-900">
-          <QuestionMarkCircleIcon className="h-6 w-6" />
-        </Link>
-      </div>
-
-      {/* Main Content */}
-      <div className="h-full flex flex-col items-center justify-center">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900">SpendSmart</h1>
-          <p className="mt-4 text-gray-600 text-lg">Track and analyze your expenses effortlessly</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 sm:text-6xl md:text-7xl"
+          >
+            SpendSmart+
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="mt-4 max-w-md mx-auto text-base text-gray-300 sm:text-lg md:mt-6 md:text-xl md:max-w-3xl"
+          >
+            Take control of your finances with our simple and intuitive expense tracker
+          </motion.p>
         </div>
 
-        <div className="w-full max-w-xl">
-          {/* Upload Box */}
-          <div
-            className={`
-              p-16 rounded-2xl border-2 border-dashed
-              ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-              transition-colors duration-200 ease-in-out
-            `}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className="flex flex-col items-center justify-center space-y-6">
-              <div className="p-4 rounded-full bg-gray-50">
-                <ArrowUpTrayIcon className="w-12 h-12 text-gray-400" />
-              </div>
-              <div className="text-center space-y-2">
-                <p className="text-gray-900 text-lg font-medium">
-                  Drop your exported SMS XML file here
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mt-16"
+        >
+          {/* Drag and Drop Upload Box */}
+          <div className="max-w-2xl mx-auto">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative flex flex-col items-center justify-center p-8 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors duration-200">
+                <ArrowUpTrayIcon className="h-12 w-12 text-indigo-400 mb-4" />
+                <h3 className="text-xl font-medium text-gray-200 mb-2">Upload SMS Data</h3>
+                <p className="text-gray-400 text-center mb-6">
+                  Drag and drop your SMS export file here, or click to browse
                 </p>
-                <p className="text-gray-500 text-sm">
-                  or
-                </p>
-                <label>
-                  <input
-                    type="file"
-                    accept=".xml"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <span className="text-blue-600 hover:text-blue-700 cursor-pointer text-sm font-medium">
-                    click to browse
-                  </span>
-                </label>
+                <button className="px-6 py-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-full border border-indigo-500/20 hover:border-indigo-500/40 transition-all duration-200 backdrop-blur-sm">
+                  Choose File
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Manual Entry Button */}
-          <div className="mt-8 text-center">
+          {/* Action Buttons */}
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto">
             <Link
-              to="/manual-entry"
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              to="/add-expense"
+              className="group relative"
             >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Add Expense Manually
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative flex items-center justify-center p-6 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all duration-200">
+                <PlusCircleIcon className="h-6 w-6 text-indigo-400 mr-3" />
+                <span className="text-gray-200 font-medium">Add New Expense</span>
+              </div>
+            </Link>
+
+            <Link
+              to="/dashboard"
+              className="group relative"
+            >
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative flex items-center justify-center p-6 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all duration-200">
+                <ChartBarIcon className="h-6 w-6 text-indigo-400 mr-3" />
+                <span className="text-gray-200 font-medium">View Dashboard</span>
+              </div>
             </Link>
           </div>
-
-          {/* Help Text */}
-          <p className="mt-8 text-center text-sm text-gray-500">
-            <Link to="/guide" className="text-blue-600 hover:text-blue-700">
-              What's an SMS XML?
-            </Link>
-          </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
-}
-
-export default LandingPage 
+} 
