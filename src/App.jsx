@@ -15,6 +15,7 @@ export default function App() {
         <main>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/add-expense" element={<AddExpensePage />} />
             <Route
               path="/dashboard"
               element={

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import useExpenseStore from '../store/expenseStore';
 import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 
 export default function TransactionsPage() {
   const expenses = useExpenseStore((state) => state.expenses);
@@ -140,10 +141,10 @@ export default function TransactionsPage() {
             <FunnelIcon className="h-5 w-5" />
             Filters
           </button>
-          <button className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-500">
+          <Link to="/dashboard/add-expense" className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-500">
             <PlusIcon className="h-5 w-5" />
             Add Transaction
-          </button>
+          </Link>
         </div>
       </div>
 

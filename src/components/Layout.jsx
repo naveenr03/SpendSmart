@@ -130,11 +130,11 @@ export default function Layout({ children }) {
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64 pt-16 lg:pt-8">
-        <div className="p-4 sm:p-6 lg:p-0">
+      <div className="lg:ml-64 pt-16 lg:pt-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </div>
     </div>
   );
-} 
+}
