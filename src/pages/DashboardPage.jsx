@@ -60,7 +60,7 @@ export default function DashboardPage() {
         className="w-full max-w-6xl mx-auto"
       >
         <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Dashboard</h1>
+         <Link to="/"> <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Expense Tracker</h1></Link >
           <Link
             to="/add-expense"
             className="px-6 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:from-indigo-400 hover:to-purple-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
