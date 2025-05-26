@@ -45,15 +45,17 @@ export default function OverviewPage() {
   }, [expenses]);
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-white">Overview</h1>
+      
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Current Month Spending */}
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gray-800 rounded-xl p-6 shadow-lg"
+          className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg"
         >
           <h3 className="text-gray-400 text-sm font-medium">Current Month</h3>
-          <p className="text-3xl font-bold text-white mt-2">
+          <p className="text-2xl sm:text-3xl font-bold text-white mt-2">
             ${currentMonthSpending.toFixed(2)}
           </p>
           <p className="text-gray-400 text-sm mt-2">
@@ -64,10 +66,10 @@ export default function OverviewPage() {
         {/* Last Month Spending */}
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gray-800 rounded-xl p-6 shadow-lg"
+          className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg"
         >
           <h3 className="text-gray-400 text-sm font-medium">Last Month</h3>
-          <p className="text-3xl font-bold text-white mt-2">
+          <p className="text-2xl sm:text-3xl font-bold text-white mt-2">
             ${lastMonthSpending.toFixed(2)}
           </p>
           <p className="text-gray-400 text-sm mt-2">
@@ -81,10 +83,10 @@ export default function OverviewPage() {
         {/* Monthly Budget */}
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gray-800 rounded-xl p-6 shadow-lg"
+          className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg"
         >
           <h3 className="text-gray-400 text-sm font-medium">Monthly Budget</h3>
-          <p className="text-3xl font-bold text-white mt-2">$2,000.00</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white mt-2">$2,000.00</p>
           <p className="text-gray-400 text-sm mt-2">
             Remaining: ${(2000 - currentMonthSpending).toFixed(2)}
           </p>
@@ -94,15 +96,22 @@ export default function OverviewPage() {
       {/* Monthly Spending Chart */}
       <motion.div
         whileHover={{ scale: 1.01 }}
-        className="bg-gray-800 rounded-xl p-6 shadow-lg"
+        className="bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg"
       >
         <h2 className="text-lg font-medium text-white mb-4">Monthly Spending</h2>
-        <div className="h-80">
+        <div className="h-60 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="month" stroke="#a5b4fc" />
-              <YAxis stroke="#a5b4fc" />
+              <XAxis 
+                dataKey="month" 
+                stroke="#a5b4fc"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                stroke="#a5b4fc"
+                tick={{ fontSize: 12 }}
+              />
               <Tooltip
                 contentStyle={{
                   background: '#1e293b',
