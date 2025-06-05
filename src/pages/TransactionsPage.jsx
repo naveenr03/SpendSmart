@@ -230,8 +230,8 @@ export default function TransactionsPage() {
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {new Date(expense.date).toLocaleDateString()}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {expense.description}
+                      <td className="px-4 sm:px-6 py-4 text-sm text-white">
+                        {expense.description || expense.note || 'No description'}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {expense.category}

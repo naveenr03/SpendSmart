@@ -54,6 +54,28 @@ const TransactionGroups = () => {
     }
   };
 
+  const formatDescription = (description) => {
+    if (!description) return '';
+
+    // Remove common SMS prefixes and suffixes
+    let formattedDesc = description
+      .replace(/^Dear\s+Customer,\s*/i, '')
+      .replace(/^Your\s+account\s+has\s+been\s+debited\s+by\s+/i, '')
+      .replace(/^Rs\.?\s*\d+(?:,\d+)*(?:\.\d{2})?\s+has\s+been\s+debited\s+from\s+your\s+account\s+/i, '')
+      .replace(/^A\/c\s+\d+\s+/i, '')
+      .replace(/^on\s+\d{2}[-/]\d{2}[-/]\d{2,4}\s+/i, '')
+      .replace(/\s+for\s+.*$/i, '')
+      .replace(/\s+Thank\s+you\s+for\s+using\s+our\s+services\.?$/i, '')
+      .trim();
+
+    // If the description is too long, truncate it
+    if (formattedDesc.length > 100) {
+      formattedDesc = formattedDesc.substring(0, 97) + '...';
+    }
+
+    return formattedDesc || 'Transaction';
+  };
+
   const handleCategoryChange = (groupId, category) => {
     if (!category) return; // Don't process if no category selected
 
@@ -64,11 +86,14 @@ const TransactionGroups = () => {
       // Add transactions to the expense store first
       const expensesToAdd = group.transactions.map((transaction) => {
         const parsedDate = parseDate(transaction.date);
+        const formattedDescription = formatDescription(transaction.description);
+        
         return {
           amount: transaction.amount,
           category,
           date: parsedDate,
-          note: transaction.description,
+          note: formattedDescription,
+          description: formattedDescription, // Add description field
         };
       });
 
@@ -193,7 +218,7 @@ const TransactionGroups = () => {
                     </div>
                   </div>
                   <p className="mt-2 text-sm text-gray-400 line-clamp-2">
-                    {transaction.description}
+                    {formatDescription(transaction.description)}
                   </p>
                 </div>
               ))}
