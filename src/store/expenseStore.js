@@ -3,22 +3,27 @@ import { persist } from 'zustand/middleware';
 
 const useExpenseStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       expenses: [],
-      addExpense: (expense) =>
+      addExpense: (expense) => {
         set((state) => ({
           expenses: [...state.expenses, { ...expense, id: Date.now() }],
-        })),
-      deleteExpense: (id) =>
+        }));
+      },
+      addExpenses: (newExpenses) => {
+        set((state) => ({
+          expenses: [
+            ...state.expenses,
+            ...newExpenses.map((expense) => ({ ...expense, id: Date.now() + Math.random() })),
+          ],
+        }));
+      },
+      removeExpense: (id) => {
         set((state) => ({
           expenses: state.expenses.filter((expense) => expense.id !== id),
-        })),
-      updateExpense: (id, updatedExpense) =>
-        set((state) => ({
-          expenses: state.expenses.map((expense) =>
-            expense.id === id ? { ...expense, ...updatedExpense } : expense
-          ),
-        })),
+        }));
+      },
+      clearExpenses: () => set({ expenses: [] }),
     }),
     {
       name: 'expense-storage',

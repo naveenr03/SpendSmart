@@ -57,7 +57,7 @@ export default function AddExpensePage() {
             </label>
             <div className="relative rounded-lg shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-400 sm:text-sm">$</span>
+                <span className="text-gray-400 sm:text-sm">Rs</span>
               </div>
               <input
                 type="number"

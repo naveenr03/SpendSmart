@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import useExpenseStore from '../store/expenseStore';
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, FunnelIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function TransactionsPage() {
   const expenses = useExpenseStore((state) => state.expenses);
@@ -13,6 +14,9 @@ export default function TransactionsPage() {
     minAmount: '',
     maxAmount: '',
   });
+  const removeExpense = useExpenseStore((state) => state.removeExpense);
+  const clearExpenses = useExpenseStore((state) => state.clearExpenses);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const categories = useMemo(() => {
     const uniqueCategories = new Set(expenses.map((expense) => expense.category));
@@ -54,6 +58,27 @@ export default function TransactionsPage() {
       return true;
     });
   }, [expenses, filters]);
+
+  const handleRemoveExpense = (id) => {
+    try {
+      removeExpense(id);
+      toast.success('Transaction removed successfully');
+    } catch (error) {
+      console.error('Error removing transaction:', error);
+      toast.error('Failed to remove transaction');
+    }
+  };
+
+  const handleClearAll = () => {
+    try {
+      clearExpenses();
+      setShowClearConfirm(false);
+      toast.success('All transactions cleared successfully');
+    } catch (error) {
+      console.error('Error clearing transactions:', error);
+      toast.error('Failed to clear transactions');
+    }
+  };
 
   const FilterSidebar = () => (
     <div className="bg-gray-800 rounded-xl p-6">
@@ -125,6 +150,17 @@ export default function TransactionsPage() {
           />
         </div>
       </div>
+
+      {/* Clear All Button */}
+      {expenses.length > 0 && (
+        <button
+          onClick={() => setShowClearConfirm(true)}
+          className="w-full mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+        >
+          <TrashIcon className="h-5 w-5" />
+          <span>Clear All Transactions</span>
+        </button>
+      )}
     </div>
   );
 
@@ -178,6 +214,9 @@ export default function TransactionsPage() {
                     <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Amount
                     </th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -200,6 +239,15 @@ export default function TransactionsPage() {
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-white">
                         ${expense.amount.toFixed(2)}
                       </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleRemoveExpense(expense.id)}
+                          className="text-gray-400 hover:text-red-400 transition-colors"
+                          title="Remove transaction"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
                     </motion.tr>
                   ))}
                 </tbody>
@@ -208,6 +256,34 @@ export default function TransactionsPage() {
           </div>
         </div>
       </div>
+
+      {/* Clear All Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-white mb-4">
+              Clear All Transactions?
+            </h3>
+            <p className="text-gray-400 mb-6">
+              This action cannot be undone. All your transaction history will be permanently deleted.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearAll}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
