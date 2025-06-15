@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BarChart,
@@ -12,44 +12,53 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import useExpenseStore from '../store/expenseStore';
+import useBudgetStore from '../store/budgetStore';
+import { getBudgetStatus } from '../utils/budgetSuggestions';
+import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 const COLORS = ['#6366f1', '#a78bfa', '#f472b6', '#38bdf8', '#facc15', '#34d399'];
 
 export default function DashboardPage() {
   const expenses = useExpenseStore((state) => state.expenses);
+  const budgets = useBudgetStore((state) => state.budgets);
+  const [budgetWarnings, setBudgetWarnings] = useState([]);
 
-  const { monthlyData, categoryData, totalSpent } = useMemo(() => {
-    const now = new Date();
-    const lastSixMonths = Array.from({ length: 6 }, (_, i) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      return date.toISOString().slice(0, 7); // YYYY-MM format
-    }).reverse();
+  useEffect(() => {
+    // Check for budget warnings
+    const warnings = [];
+    Object.entries(budgets).forEach(([category, budget]) => {
+      const status = getBudgetStatus(budget.spent, budget.limit);
+      if (status.status === 'exceeded' || status.status === 'warning') {
+        warnings.push({
+          category,
+          ...status,
+        });
+      }
+    });
 
-    const monthlyData = lastSixMonths.map((month) => ({
-      month: new Date(month).toLocaleDateString('default', { month: 'short' }),
-      amount: expenses
-        .filter((expense) => expense.date.startsWith(month))
-        .reduce((sum, expense) => sum + expense.amount, 0),
-    }));
+    setBudgetWarnings(warnings);
 
-    const categoryData = expenses.reduce((acc, expense) => {
-      const category = expense.category || 'Uncategorized';
-      acc[category] = (acc[category] || 0) + expense.amount;
-      return acc;
-    }, {});
+    // Show toast for new warnings
+    warnings.forEach((warning) => {
+      if (warning.status === 'exceeded') {
+        toast.error(`${warning.category} budget exceeded!`);
+      } else if (warning.status === 'warning') {
+        toast.warning(`${warning.category} budget is close to limit`);
+      }
+    });
+  }, [budgets]);
 
-    const pieData = Object.entries(categoryData).map(([name, value]) => ({
-      name,
-      value,
-    }));
+  // Calculate total expenses
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-    const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-    return { monthlyData, categoryData: pieData, totalSpent };
-  }, [expenses]);
+  // Calculate expenses by category
+  const expensesByCategory = expenses.reduce((acc, expense) => {
+    acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
@@ -70,20 +79,166 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Budget Warnings */}
+        {budgetWarnings.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gray-800 rounded-xl p-6"
+          >
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
+              Budget Alerts
+            </h2>
+            <div className="space-y-4">
+              {budgetWarnings.map((warning) => (
+                <div
+                  key={warning.category}
+                  className={`p-4 rounded-lg ${
+                    warning.status === 'exceeded'
+                      ? 'bg-red-900/50 border border-red-500'
+                      : 'bg-yellow-900/50 border border-yellow-500'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-medium">{warning.category}</h3>
+                    <span
+                      className={`text-sm ${
+                        warning.status === 'exceeded'
+                          ? 'text-red-400'
+                          : 'text-yellow-400'
+                      }`}
+                    >
+                      {warning.message}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>Spent: ₹{budgets[warning.category].spent}</span>
+                      <span>Limit: ₹{budgets[warning.category].limit}</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2 mt-1">
+                      <div
+                        className={`h-2 rounded-full ${
+                          warning.status === 'exceeded'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            (budgets[warning.category].spent /
+                              budgets[warning.category].limit) *
+                              100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-10">
-          <motion.div whileHover={{ scale: 1.03 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 backdrop-blur-md">
-            <dt className="text-sm font-medium text-gray-400">Total Spent</dt>
-            <dd className="mt-2 text-3xl font-semibold text-indigo-300">${totalSpent.toFixed(2)}</dd>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gray-800 rounded-xl p-6"
+          >
+            <h3 className="text-lg font-medium text-gray-400 mb-2">
+              Total Expenses
+            </h3>
+            <p className="text-3xl font-bold text-white">₹{totalExpenses}</p>
           </motion.div>
-          <motion.div whileHover={{ scale: 1.03 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 backdrop-blur-md">
-            <dt className="text-sm font-medium text-gray-400">Total Expenses</dt>
-            <dd className="mt-2 text-3xl font-semibold text-indigo-300">{expenses.length}</dd>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gray-800 rounded-xl p-6"
+          >
+            <h3 className="text-lg font-medium text-gray-400 mb-2">
+              Active Budgets
+            </h3>
+            <p className="text-3xl font-bold text-white">
+              {Object.keys(budgets).length}
+            </p>
           </motion.div>
-          <motion.div whileHover={{ scale: 1.03 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 backdrop-blur-md">
-            <dt className="text-sm font-medium text-gray-400">Average Expense</dt>
-            <dd className="mt-2 text-3xl font-semibold text-indigo-300">${(totalSpent / (expenses.length || 1)).toFixed(2)}</dd>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gray-800 rounded-xl p-6"
+          >
+            <h3 className="text-lg font-medium text-gray-400 mb-2">
+              Categories
+            </h3>
+            <p className="text-3xl font-bold text-white">
+              {Object.keys(expensesByCategory).length}
+            </p>
           </motion.div>
+        </div>
+
+        {/* Budget Progress */}
+        <div className="bg-gray-800 rounded-xl p-6">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <ChartBarIcon className="h-6 w-6 text-indigo-500" />
+            Budget Progress
+          </h2>
+          <div className="space-y-4">
+            {Object.entries(budgets).map(([category, budget]) => {
+              const status = getBudgetStatus(budget.spent, budget.limit);
+              return (
+                <div key={category} className="bg-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-white font-medium">{category}</h3>
+                    <span
+                      className={`text-sm ${
+                        status.status === 'exceeded'
+                          ? 'text-red-400'
+                          : status.status === 'warning'
+                          ? 'text-yellow-400'
+                          : 'text-green-400'
+                      }`}
+                    >
+                      {status.message}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Spent:</span>
+                      <span className="text-white">₹{budget.spent}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Limit:</span>
+                      <span className="text-white">₹{budget.limit}</span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          status.status === 'exceeded'
+                            ? 'bg-red-500'
+                            : status.status === 'warning'
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            (budget.spent / budget.limit) * 100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Charts */}

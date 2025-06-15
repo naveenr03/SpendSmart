@@ -6,13 +6,39 @@ import OverviewPage from './pages/OverviewPage'
 import TransactionsPage from './pages/TransactionsPage'
 import AddExpensePage from './pages/AddExpensePage'
 import './App.css'
+import Navbar from './components/Navbar'
+import DashboardPage from './pages/DashboardPage'
+import BudgetSettings from './components/BudgetSettings'
+import { useEffect } from 'react'
+import useBudgetStore from './store/budgetStore'
 
 export default function App() {
+  const resetMonthlySpending = useBudgetStore((state) => state.resetMonthlySpending)
+
+  useEffect(() => {
+    // Check if it's the first day of the month
+    const checkAndResetBudgets = () => {
+      const now = new Date()
+      if (now.getDate() === 1) {
+        resetMonthlySpending()
+      }
+    }
+
+    // Check on mount
+    checkAndResetBudgets()
+
+    // Set up interval to check daily
+    const interval = setInterval(checkAndResetBudgets, 24 * 60 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [resetMonthlySpending])
+
   return (
     <Router>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="min-h-screen w-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-x-hidden">
+        <Navbar />
         <Toaster position="top-right" />
-        <main>
+        <main className="w-full px-2 sm:px-4">
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/add-expense" element={<AddExpensePage />} />
@@ -40,6 +66,7 @@ export default function App() {
                 </Layout>
               }
             />
+            <Route path="/dashboard/budget" element={<BudgetSettings />} />
           </Routes>
         </main>
       </div>
