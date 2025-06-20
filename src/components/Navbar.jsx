@@ -45,7 +45,7 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 w-full">
           <Link to="/" className="text-xl font-bold text-white flex-shrink-0">
-            SpendWise+
+            SpendSmart
           </Link>
           <div className="hidden lg:flex space-x-4">
             {navItems.map((item) => (

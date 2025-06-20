@@ -18,7 +18,7 @@ const categories = [
 ];
 
 const TransactionGroups = () => {
-  const { groups, updateGroupCategory, removeGroup } = useTransactionGroupsStore();
+  const { groups, updateGroupCategory, removeGroup, removeTransactionFromGroup } = useTransactionGroupsStore();
   const addExpenses = useExpenseStore((state) => state.addExpenses);
   const [expandedGroup, setExpandedGroup] = useState(null);
 
@@ -77,38 +77,52 @@ const TransactionGroups = () => {
   };
 
   const handleCategoryChange = (groupId, category) => {
-    if (!category) return; // Don't process if no category selected
+    if (!category) return;
+    updateGroupCategory(groupId, category);
+    toast.success('Category tagged');
+  };
 
+  const addAllExpensesFromGroup = (groupId, category) => {
     const group = groups.find((g) => g.id === groupId);
-    if (!group) return;
-
+    if (!group || !category) return;
     try {
-      // Add transactions to the expense store first
       const expensesToAdd = group.transactions.map((transaction) => {
         const parsedDate = parseDate(transaction.date);
         const formattedDescription = formatDescription(transaction.description);
-        
         return {
           amount: transaction.amount,
           category,
           date: parsedDate,
           note: formattedDescription,
-          description: formattedDescription, // Add description field
+          description: formattedDescription,
         };
       });
-
       addExpenses(expensesToAdd);
-
-      // Update the category in the groups store
-      updateGroupCategory(groupId, category);
-
-      // Remove the group after successful tagging
       removeGroup(groupId);
-      
       toast.success(`Added ${expensesToAdd.length} transactions to expenses`);
     } catch (error) {
       console.error('Error adding transactions:', error);
       toast.error('Failed to add transactions');
+    }
+  };
+
+  const addExpenseFromTransaction = (groupId, transaction, transactionIndex, category) => {
+    try {
+      const parsedDate = parseDate(transaction.date);
+      const formattedDescription = formatDescription(transaction.description);
+      const expense = {
+        amount: transaction.amount,
+        category: category || 'Other',
+        date: parsedDate,
+        note: formattedDescription,
+        description: formattedDescription,
+      };
+      addExpenses([expense]);
+      removeTransactionFromGroup(groupId, transactionIndex);
+      toast.success('Transaction added');
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast.error('Failed to add transaction');
     }
   };
 
@@ -195,29 +209,53 @@ const TransactionGroups = () => {
 
           {expandedGroup === group.id && (
             <div className="space-y-3 mt-4">
+              <div className="flex justify-end mb-2">
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => addAllExpensesFromGroup(group.id, group.category)}
+                  disabled={!group.category || group.transactions.length === 0}
+                >
+                  Add All
+                </button>
+              </div>
               {group.transactions.map((transaction, index) => (
                 <div
                   key={index}
-                  className="bg-gray-900/50 rounded-lg p-4 border border-gray-700"
+                  className="bg-gray-900/50 rounded-lg p-4 border border-gray-700 flex justify-between items-center gap-4"
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-gray-300 font-medium">
-                        Rs. {transaction.amount.toFixed(2)}
+                  <div>
+                    <p className="text-gray-300 font-medium">
+                      Rs. {transaction.amount.toFixed(2)}
+                    </p>
+                    {transaction.accountLast4 && (
+                      <p className="text-sm text-gray-400">
+                        A/C: ****{transaction.accountLast4}
                       </p>
-                      {transaction.accountLast4 && (
-                        <p className="text-sm text-gray-400">
-                          A/C: ****{transaction.accountLast4}
-                        </p>
-                      )}
-                      {transaction.date && (
-                        <p className="text-sm text-gray-400">
-                          Date: {transaction.date}
-                        </p>
-                      )}
-                    </div>
+                    )}
+                    {transaction.date && (
+                      <p className="text-sm text-gray-400">
+                        Date: {transaction.date}
+                      </p>
+                    )}
                   </div>
-                  <p className="mt-2 text-sm text-gray-400 line-clamp-2">
+                  <div className="flex flex-col items-end gap-2">
+                    <button
+                      className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 transition-colors"
+                      onClick={() => addExpenseFromTransaction(group.id, transaction, index, group.category)}
+                    >
+                      Add
+                    </button>
+                    <button
+                      className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-500 transition-colors"
+                      onClick={() => {
+                        removeTransactionFromGroup(group.id, index);
+                        toast.success('Transaction removed');
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-400 line-clamp-2 w-full">
                     {formatDescription(transaction.description)}
                   </p>
                 </div>

@@ -125,6 +125,25 @@ const useTransactionGroupsStore = create(
 
       // Clear all groups and parsed transactions
       clearGroups: () => set({ groups: [], parsedTransactions: [] }),
+
+      // Remove a single transaction from a group
+      removeTransactionFromGroup: (groupId, transactionIndex) => {
+        set((state) => {
+          const updatedGroups = state.groups
+            .map((group) => {
+              if (group.id === groupId) {
+                const newTransactions = group.transactions.filter((_, idx) => idx !== transactionIndex);
+                if (newTransactions.length === 0) {
+                  return null; // Mark for removal
+                }
+                return { ...group, transactions: newTransactions };
+              }
+              return group;
+            })
+            .filter(Boolean); // Remove empty groups
+          return { groups: updatedGroups };
+        });
+      },
     }),
     {
       name: 'transaction-groups-storage',
