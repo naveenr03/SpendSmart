@@ -65,6 +65,11 @@ const useBudgetStore = create(
         set({ suggestions });
       },
 
+      // Clear all suggestions
+      clearSuggestions: () => {
+        set({ suggestions: {} });
+      },
+
       // Apply all suggestions
       applyAllSuggestions: () => {
         const { suggestions } = get();

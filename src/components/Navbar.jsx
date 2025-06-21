@@ -7,6 +7,7 @@ import {
   CreditCardIcon,
   Bars3Icon,
   XMarkIcon,
+  LightBulbIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Navbar() {
@@ -32,6 +33,11 @@ export default function Navbar() {
       path: '/dashboard/budget',
       icon: ChartBarIcon,
       label: 'Budget',
+    },
+    {
+      path: '/dashboard/smart-budget',
+      icon: LightBulbIcon,
+      label: 'Smart Budget',
     },
     {
       path: '/dashboard/add-expense',

@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage'
 import OverviewPage from './pages/OverviewPage'
 import TransactionsPage from './pages/TransactionsPage'
 import AddExpensePage from './pages/AddExpensePage'
+import SmartBudgetPage from './pages/SmartBudgetPage'
 import './App.css'
 import Navbar from './components/Navbar'
 import DashboardPage from './pages/DashboardPage'
@@ -66,7 +67,22 @@ export default function App() {
                 </Layout>
               }
             />
-            <Route path="/dashboard/budget" element={<BudgetSettings />} />
+            <Route
+              path="/dashboard/budget"
+              element={
+                <Layout>
+                  <BudgetSettings />
+                </Layout>
+              }
+            />
+            <Route
+              path="/dashboard/smart-budget"
+              element={
+                <Layout>
+                  <SmartBudgetPage />
+                </Layout>
+              }
+            />
           </Routes>
         </main>
       </div>
