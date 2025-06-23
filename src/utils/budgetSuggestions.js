@@ -270,4 +270,74 @@ export const generateDemoExpenses = () => {
   }
   
   return demoExpenses;
-}; 
+};
+
+/**
+ * Reverse budgeting: Given a savings goal, transactions, and optional estimated income,
+ * calculate how much the user can spend per category per month.
+ *
+ * @param {Object} goal - { goalName, targetAmount, deadline }
+ * @param {Array} transactions - Array of { amount, category, date, ... }
+ * @param {number} [estimatedIncome] - Optional monthly income
+ * @returns {Array} Array of { category, maxSpend, reason }
+ */
+export function generateReverseBudget(goal, transactions, estimatedIncome) {
+  if (!goal || !goal.targetAmount || !goal.deadline) return [];
+  // Calculate months left
+  const now = new Date();
+  const deadline = new Date(goal.deadline);
+  const monthsLeft = Math.max(1, (deadline.getFullYear() - now.getFullYear()) * 12 + (deadline.getMonth() - now.getMonth()) + 1);
+  // How much to save per month
+  const monthlySaving = Math.max(0, (goal.targetAmount - (goal.savedSoFar || 0)) / monthsLeft);
+
+  // Estimate monthly income
+  let income = estimatedIncome;
+  if (!income) {
+    // Try to estimate from credits in transactions (if available)
+    // For now, fallback to 0 if not provided
+    income = 0;
+  }
+
+  // Calculate average monthly spend
+  const monthlyTotals = {};
+  const categoryTotals = {};
+  let minDate = null, maxDate = null;
+  transactions.forEach(tx => {
+    if (!tx.category || !tx.amount) return;
+    const date = new Date(tx.date);
+    if (!minDate || date < minDate) minDate = date;
+    if (!maxDate || date > maxDate) maxDate = date;
+    categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.amount;
+    const ym = `${date.getFullYear()}-${date.getMonth() + 1}`;
+    monthlyTotals[ym] = (monthlyTotals[ym] || 0) + tx.amount;
+  });
+  const months = Object.keys(monthlyTotals).length || 1;
+  const totalSpent = Object.values(monthlyTotals).reduce((a, b) => a + b, 0);
+  const avgMonthlySpend = totalSpent / months;
+
+  // Allowed spend = income - monthlySaving
+  const allowedMonthlySpend = (income || avgMonthlySpend) - monthlySaving;
+  if (allowedMonthlySpend < 0) {
+    return [{
+      category: 'All',
+      maxSpend: 0,
+      reason: 'Goal requires saving more than your income/spending',
+    }];
+  }
+
+  // Calculate category percentages
+  const totalCategorySpend = Object.values(categoryTotals).reduce((a, b) => a + b, 0) || 1;
+  const categoryPercents = {};
+  Object.entries(categoryTotals).forEach(([cat, amt]) => {
+    categoryPercents[cat] = amt / totalCategorySpend;
+  });
+
+  // Distribute allowed spend
+  const smartBudget = Object.entries(categoryPercents).map(([cat, percent]) => ({
+    category: cat,
+    maxSpend: Math.round(allowedMonthlySpend * percent),
+    reason: `Based on ${(percent * 100).toFixed(1)}% of historical expenses`,
+  }));
+
+  return smartBudget;
+} 

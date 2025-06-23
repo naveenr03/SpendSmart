@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { generateSmartBudgetSuggestions, generateDetailedBudgetAnalysis, generateDemoExpenses } from '../utils/budgetSuggestions';
+import { generateSmartBudgetSuggestions, generateDetailedBudgetAnalysis, generateDemoExpenses, generateReverseBudget } from '../utils/budgetSuggestions';
 import useBudgetStore from '../store/budgetStore';
 import useExpenseStore from '../store/expenseStore';
+import useGoalStore from '../store/goalStore';
 import { LightBulbIcon, ChartBarIcon, ExclamationTriangleIcon, CheckIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, PlayIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import GoalForm from '../components/GoalForm';
+import { Dialog } from '@headlessui/react';
 
 // Helper function to get consistency level color
 const getConsistencyColor = (level) => {
@@ -45,11 +48,19 @@ const getTrendIcon = (monthlyData) => {
 export default function SmartBudgetPage() {
   const { setBudget, applyAllSuggestions, clearSuggestions, suggestions } = useBudgetStore();
   const { addExpenses } = useExpenseStore();
+  const { goals, addGoal, updateGoal, getProgress, addSavings, deleteGoal } = useGoalStore();
+  const expenses = useExpenseStore((state) => state.expenses);
   const [smartSuggestions, setSmartSuggestions] = useState({});
   const [analysis, setAnalysis] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalResult, setGoalResult] = useState(null);
+  const [activeGoal, setActiveGoal] = useState(null);
+  const [showSavingsModal, setShowSavingsModal] = useState(false);
+  const [savingsAmount, setSavingsAmount] = useState('');
+  const [goalToUpdate, setGoalToUpdate] = useState(null);
 
   useEffect(() => {
     const generateSuggestions = () => {
@@ -99,6 +110,53 @@ export default function SmartBudgetPage() {
     setTimeout(() => {
       handleRefreshAnalysis();
     }, 500);
+  };
+
+  // Handler for goal form submit
+  const handleGoalSubmit = (goalData) => {
+    addGoal(goalData);
+    setShowGoalModal(false);
+    setActiveGoal(goalData);
+    // Compute reverse budget
+    const result = generateReverseBudget(goalData, expenses);
+    setGoalResult(result);
+    toast.success('Goal saved and smart budget generated!');
+  };
+
+  // Handler to view a goal's reverse budget
+  const handleViewGoal = (goal) => {
+    setActiveGoal(goal);
+    const result = generateReverseBudget(goal, expenses);
+    setGoalResult(result);
+    setShowGoalModal(false);
+  };
+
+  // Handler to open add savings modal
+  const handleOpenAddSavings = (goal) => {
+    setGoalToUpdate(goal);
+    setSavingsAmount('');
+    setShowSavingsModal(true);
+  };
+
+  // Handler to add savings
+  const handleAddSavings = () => {
+    const amount = Number(savingsAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    addSavings(goalToUpdate.id, amount);
+    setShowSavingsModal(false);
+    setGoalToUpdate(null);
+    toast.success('Savings added!');
+  };
+
+  // Handler to remove goal
+  const handleRemoveGoal = (goal) => {
+    if (window.confirm(`Remove goal "${goal.goalName}"?`)) {
+      deleteGoal(goal.id);
+      toast.success('Goal removed');
+    }
   };
 
   if (isLoading) {
@@ -168,6 +226,142 @@ export default function SmartBudgetPage() {
             )}
           </div>
         </div>
+
+        {/* Reverse Budgeting + Smart Goals Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-indigo-700 shadow-xl mb-8"
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
+                <span role="img" aria-label="target">🎯</span> Reverse Budgeting & Smart Goals
+              </h2>
+              <p className="text-gray-400 text-sm">Set a savings goal and get a personalized spending plan</p>
+            </div>
+            <button
+              onClick={() => { setShowGoalModal(true); setActiveGoal(null); setGoalResult(null); }}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-500 hover:to-purple-500 transition-all"
+            >
+              + New Goal
+            </button>
+          </div>
+
+          {/* List of Goals */}
+          {goals.length === 0 ? (
+            <div className="text-gray-400 text-center py-6">No savings goals yet. Start by adding one!</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {goals.map(goal => (
+                <div key={goal.id} className="bg-gray-800/80 border border-gray-700 rounded-xl p-5 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-lg font-semibold text-white">{goal.goalName}</div>
+                      <div className="text-gray-400 text-xs">Target: ₹{goal.targetAmount.toLocaleString()} by {goal.deadline}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleViewGoal(goal)}
+                        className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 transition-colors"
+                      >
+                        View Plan
+                      </button>
+                      <button
+                        onClick={() => handleOpenAddSavings(goal)}
+                        className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-500 transition-colors"
+                      >
+                        + Add Savings
+                      </button>
+                      <button
+                        onClick={() => handleRemoveGoal(goal)}
+                        className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-500 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className="h-2 rounded-full bg-green-500"
+                      style={{ width: `${getProgress(goal.id)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{getProgress(goal.id).toFixed(1)}% saved</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Modal for Goal Form and Results */}
+        <Dialog open={showGoalModal || !!goalResult} onClose={() => { setShowGoalModal(false); setGoalResult(null); }} className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            {/* Overlay (replace Dialog.Overlay) */}
+            <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+            <Dialog.Panel className="relative bg-gray-900 rounded-2xl shadow-xl border border-gray-700 w-full max-w-lg mx-auto p-6 z-10">
+              {showGoalModal && !goalResult && (
+                <GoalForm onSubmit={handleGoalSubmit} />
+              )}
+              {goalResult && activeGoal && (
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">Smart Budget for "{activeGoal.goalName}"</h3>
+                  <div className="mb-4 text-gray-400 text-sm">To save <span className="text-green-400 font-semibold">₹{activeGoal.targetAmount.toLocaleString()}</span> by <span className="text-indigo-400 font-semibold">{activeGoal.deadline}</span>, save <span className="text-yellow-400 font-semibold">₹{Math.round((activeGoal.targetAmount - (activeGoal.savedSoFar || 0)) / (Math.max(1, (new Date(activeGoal.deadline).getFullYear() - new Date().getFullYear()) * 12 + (new Date(activeGoal.deadline).getMonth() - new Date().getMonth()) + 1)) ).toLocaleString()}</span> per month.</div>
+                  <div className="space-y-3">
+                    {goalResult.map((item, idx) => (
+                      <div key={item.category + idx} className="bg-gray-800 rounded-lg p-4 flex flex-col gap-1 border border-gray-700">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold">{item.category}</span>
+                          <span className="text-indigo-400 font-bold">₹{item.maxSpend.toLocaleString()}</span>
+                        </div>
+                        <div className="text-xs text-gray-400">{item.reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setShowGoalModal(false); setGoalResult(null); setActiveGoal(null); }}
+                    className="mt-6 w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:from-indigo-500 hover:to-purple-500 transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </Dialog.Panel>
+          </div>
+        </Dialog>
+
+        {/* Add Savings Modal */}
+        <Dialog open={showSavingsModal} onClose={() => setShowSavingsModal(false)} className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+            <Dialog.Panel className="relative bg-gray-900 rounded-2xl shadow-xl border border-gray-700 w-full max-w-md mx-auto p-6 z-10">
+              <h3 className="text-xl font-bold text-white mb-4">Add Savings to "{goalToUpdate?.goalName}"</h3>
+              <input
+                type="number"
+                className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4"
+                placeholder="Enter amount (₹)"
+                value={savingsAmount}
+                onChange={e => setSavingsAmount(e.target.value)}
+                min="1"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddSavings}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold hover:from-green-500 hover:to-emerald-500 transition-all"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => setShowSavingsModal(false)}
+                  className="flex-1 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
 
         {/* Analysis Summary */}
         {analysis && hasData && (
