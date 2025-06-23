@@ -149,7 +149,7 @@ const TransactionGroups = () => {
               <h3 className="text-lg font-semibold text-gray-200">
                 {group.type === 'account'
                   ? `Account Group (****${group.key})`
-                  : `Amount Group (Rs. ${group.key})`}
+                  : `Amount Group (₹${group.key})`}
               </h3>
               <p className="text-sm text-gray-400">
                 {group.transactions.length} transactions
@@ -225,7 +225,7 @@ const TransactionGroups = () => {
                 >
                   <div>
                     <p className="text-gray-300 font-medium">
-                      Rs. {transaction.amount.toFixed(2)}
+                      ₹{transaction.amount.toFixed(2)}
                     </p>
                     {transaction.accountLast4 && (
                       <p className="text-sm text-gray-400">

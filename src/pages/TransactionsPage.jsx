@@ -237,7 +237,7 @@ export default function TransactionsPage() {
                         {expense.category}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-white">
-                        ${expense.amount.toFixed(2)}
+                        ₹{expense.amount.toFixed(2)}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
                         <button

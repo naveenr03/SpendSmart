@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -11,54 +13,114 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from 'recharts';
-import { PlusIcon, ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import useExpenseStore from '../store/expenseStore';
 import useBudgetStore from '../store/budgetStore';
-import { getBudgetStatus } from '../utils/budgetSuggestions';
-import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 const COLORS = ['#6366f1', '#a78bfa', '#f472b6', '#38bdf8', '#facc15', '#34d399'];
 
+function getCategoryEmoji(category) {
+  // Optionally map categories to emojis
+  const map = {
+    'Food & Dining': '🍽️',
+    'Transportation': '🚗',
+    'Shopping': '🛍️',
+    'Entertainment': '🎬',
+    'Bills & Utilities': '💡',
+    'Health & Medical': '💊',
+    'Travel': '✈️',
+    'Education': '📚',
+    'Personal Care': '🧴',
+    'Other': '💸',
+  };
+  return map[category] || '';
+}
+
 export default function DashboardPage() {
   const expenses = useExpenseStore((state) => state.expenses);
   const budgets = useBudgetStore((state) => state.budgets);
-  const [budgetWarnings, setBudgetWarnings] = useState([]);
 
-  useEffect(() => {
-    // Check for budget warnings
-    const warnings = [];
-    Object.entries(budgets).forEach(([category, budget]) => {
-      const status = getBudgetStatus(budget.spent, budget.limit);
-      if (status.status === 'exceeded' || status.status === 'warning') {
-        warnings.push({
-          category,
-          ...status,
-        });
-      }
-    });
+  // --- Data Preparation ---
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    setBudgetWarnings(warnings);
+  // Helper: parse date
+  const parseDate = (dateStr) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
 
-    // Show toast for new warnings
-    warnings.forEach((warning) => {
-      if (warning.status === 'exceeded') {
-        toast.error(`${warning.category} budget exceeded!`);
-      } else if (warning.status === 'warning') {
-        toast.warning(`${warning.category} budget is close to limit`);
-      }
-    });
-  }, [budgets]);
+  // --- Pie Chart Data ---
+  const thisMonthCategory = {};
+  const lastMonthCategory = {};
+  let thisMonthTotal = 0;
+  let lastMonthTotal = 0;
+  expenses.forEach((expense) => {
+    const d = parseDate(expense.date);
+    if (!d) return;
+    if (d >= startOfMonth && d <= now) {
+      thisMonthCategory[expense.category] = (thisMonthCategory[expense.category] || 0) + expense.amount;
+      thisMonthTotal += expense.amount;
+    } else if (d >= startOfLastMonth && d <= endOfLastMonth) {
+      lastMonthCategory[expense.category] = (lastMonthCategory[expense.category] || 0) + expense.amount;
+      lastMonthTotal += expense.amount;
+    }
+  });
+  const thisMonthPie = Object.entries(thisMonthCategory).map(([name, value]) => ({ name, value }));
+  const lastMonthPie = Object.entries(lastMonthCategory).map(([name, value]) => ({ name, value }));
 
-  // Calculate total expenses
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // --- Monthly Gains/Losses ---
+  const monthlyChange = lastMonthTotal ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
+  const monthlyChangeAbs = thisMonthTotal - lastMonthTotal;
 
-  // Calculate expenses by category
-  const expensesByCategory = expenses.reduce((acc, expense) => {
-    acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
-    return acc;
-  }, {});
+  // --- Line Chart: Cumulative Balance ---
+  const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
+  let runningTotal = 0;
+  const balanceLineData = sortedExpenses.map((expense) => {
+    runningTotal += expense.amount;
+    return {
+      date: expense.date,
+      balance: runningTotal,
+    };
+  });
+
+  // --- Bar Chart: Last 7 Days ---
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    last7Days.push(d);
+  }
+  const last7BarData = last7Days.map((d, idx) => {
+    const dayStr = d.toISOString().slice(0, 10);
+    const total = expenses
+      .filter((e) => {
+        const ed = parseDate(e.date);
+        return ed && ed.toISOString().slice(0, 10) === dayStr;
+      })
+      .reduce((sum, e) => sum + e.amount, 0);
+    return {
+      date: d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+      amount: total,
+    };
+  });
+  // Color bars red/green based on up/down vs previous day
+  last7BarData.forEach((d, i) => {
+    if (i === 0) d.trend = 0;
+    else d.trend = d.amount - last7BarData[i - 1].amount;
+  });
+
+  // --- Budgets Panel Data ---
+  const budgetList = Object.entries(budgets);
+
+  // --- Total Balance ---
+  const totalBalance = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
@@ -68,227 +130,135 @@ export default function DashboardPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-6xl mx-auto"
       >
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-4">
-         <Link to="/"> <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Expense Tracker</h1></Link >
-          <Link
-            to="/add-expense"
-            className="px-6 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:from-indigo-400 hover:to-purple-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Add Expense
-          </Link>
-        </div>
-
-        {/* Budget Warnings */}
-        {budgetWarnings.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-800 rounded-xl p-6"
-          >
-            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
-              Budget Alerts
-            </h2>
-            <div className="space-y-4">
-              {budgetWarnings.map((warning) => (
-                <div
-                  key={warning.category}
-                  className={`p-4 rounded-lg ${
-                    warning.status === 'exceeded'
-                      ? 'bg-red-900/50 border border-red-500'
-                      : 'bg-yellow-900/50 border border-yellow-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-white font-medium">{warning.category}</h3>
-                    <span
-                      className={`text-sm ${
-                        warning.status === 'exceeded'
-                          ? 'text-red-400'
-                          : 'text-yellow-400'
-                      }`}
-                    >
-                      {warning.message}
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <div className="flex justify-between text-sm text-gray-400">
-                      <span>Spent: ₹{budgets[warning.category].spent}</span>
-                      <span>Limit: ₹{budgets[warning.category].limit}</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2 mt-1">
-                      <div
-                        className={`h-2 rounded-full ${
-                          warning.status === 'exceeded'
-                            ? 'bg-red-500'
-                            : 'bg-yellow-500'
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            (budgets[warning.category].spent /
-                              budgets[warning.category].limit) *
-                              100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Top Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Balance Summary */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-400 mb-1">Total Balance</h3>
+              <p className="text-4xl font-bold text-white mb-2">₹{totalBalance.toLocaleString()}</p>
+            </div>
+            <div className="mt-4">
+              <h4 className="text-sm text-gray-400 mb-1">This Month vs Last Month</h4>
+              <div className="flex items-center gap-2">
+                <span className={`text-2xl font-bold ${monthlyChangeAbs >= 0 ? 'text-green-400' : 'text-red-400'}`}>{monthlyChangeAbs >= 0 ? '+' : ''}₹{monthlyChangeAbs.toLocaleString()}</span>
+                <span className={`text-sm font-semibold ${monthlyChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>{monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%</span>
+              </div>
             </div>
           </motion.div>
-        )}
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-800 rounded-xl p-6"
-          >
-            <h3 className="text-lg font-medium text-gray-400 mb-2">
-              Total Expenses
-            </h3>
-            <p className="text-3xl font-bold text-white">₹{totalExpenses}</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gray-800 rounded-xl p-6"
-          >
-            <h3 className="text-lg font-medium text-gray-400 mb-2">
-              Active Budgets
-            </h3>
-            <p className="text-3xl font-bold text-white">
-              {Object.keys(budgets).length}
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gray-800 rounded-xl p-6"
-          >
-            <h3 className="text-lg font-medium text-gray-400 mb-2">
-              Categories
-            </h3>
-            <p className="text-3xl font-bold text-white">
-              {Object.keys(expensesByCategory).length}
-            </p>
+          {/* Pie Charts */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 col-span-2 flex flex-col lg:flex-row gap-6 justify-between">
+            <div className="flex-1 flex flex-col items-center">
+              <h4 className="text-sm text-gray-400 mb-2">This Month</h4>
+              <div className="h-40 w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={thisMonthPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {thisMonthPie.map((entry, idx) => (
+                        <Cell key={entry.name} fill={COLORS[idx % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center">
+              <h4 className="text-sm text-gray-400 mb-2">Last Month</h4>
+              <div className="h-40 w-full flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={lastMonthPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                      {lastMonthPie.map((entry, idx) => (
+                        <Cell key={entry.name} fill={COLORS[idx % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </motion.div>
         </div>
 
-        {/* Budget Progress */}
-        <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <ChartBarIcon className="h-6 w-6 text-indigo-500" />
-            Budget Progress
-          </h2>
-          <div className="space-y-4">
-            {Object.entries(budgets).map(([category, budget]) => {
-              const status = getBudgetStatus(budget.spent, budget.limit);
-              return (
-                <div key={category} className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-white font-medium">{category}</h3>
-                    <span
-                      className={`text-sm ${
-                        status.status === 'exceeded'
-                          ? 'text-red-400'
-                          : status.status === 'warning'
-                          ? 'text-yellow-400'
-                          : 'text-green-400'
-                      }`}
-                    >
-                      {status.message}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Spent:</span>
-                      <span className="text-white">₹{budget.spent}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Limit:</span>
-                      <span className="text-white">₹{budget.limit}</span>
-                    </div>
-                    <div className="w-full bg-gray-600 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          status.status === 'exceeded'
-                            ? 'bg-red-500'
-                            : status.status === 'warning'
-                            ? 'bg-yellow-500'
-                            : 'bg-green-500'
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            (budget.spent / budget.limit) * 100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          {/* Monthly Expenses Chart */}
-          <motion.div whileHover={{ scale: 1.01 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 backdrop-blur-md">
-            <h2 className="text-lg font-medium text-gray-200 mb-4">Monthly Expenses</h2>
+        {/* Mid Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Line Chart: Balance */}
+          <motion.div whileHover={{ scale: 1.01 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6">
+            <h2 className="text-lg font-medium text-gray-200 mb-4">Balance</h2>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
+                <LineChart data={balanceLineData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#a5b4fc" />
+                  <XAxis dataKey="date" stroke="#a5b4fc" tickFormatter={(d) => d && d.slice(5)} />
                   <YAxis stroke="#a5b4fc" />
-                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#a5b4fc' }} />
-                  <Bar dataKey="amount" fill="#6366f1" radius={[8, 8, 0, 0]} />
+                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#a5b4fc' }} formatter={(v) => `₹${v.toLocaleString()}`} />
+                  <Line type="monotone" dataKey="balance" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#a5b4fc' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+          {/* Bar Chart: Last 7 Days */}
+          <motion.div whileHover={{ scale: 1.01 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6">
+            <h2 className="text-lg font-medium text-gray-200 mb-4">Last 7 Days</h2>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last7BarData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="date" stroke="#a5b4fc" />
+                  <YAxis stroke="#a5b4fc" />
+                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#a5b4fc' }} formatter={(v) => `₹${v.toLocaleString()}`} />
+                  <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                    {last7BarData.map((entry, idx) => (
+                      <Cell key={`cell-${idx}`} fill={entry.trend >= 0 ? '#34d399' : '#f472b6'} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </motion.div>
+        </div>
 
-          {/* Category Distribution Chart */}
-          <motion.div whileHover={{ scale: 1.01 }} className="bg-gray-800/80 border border-gray-700 rounded-2xl shadow-xl p-6 backdrop-blur-md">
-            <h2 className="text-lg font-medium text-gray-200 mb-4">Expense Categories</h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
-                    outerRadius={80}
-                    fill="#6366f1"
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', color: '#a5b4fc' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
+        {/* Bottom Row: Budgets Panel */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">Budgets</h2>
+          <div className="flex overflow-x-auto gap-4 pb-2 lg:grid lg:grid-cols-3 lg:gap-6">
+            {budgetList.length === 0 && (
+              <div className="text-gray-400">No active budgets. Set up a budget to get started!</div>
+            )}
+            {budgetList.map(([category, budget], idx) => {
+              const percent = budget.limit ? Math.min((budget.spent / budget.limit) * 100, 100) : 0;
+              return (
+                <motion.div
+                  key={category}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="min-w-[220px] bg-gray-800 border border-gray-700 rounded-2xl shadow-xl p-5 flex flex-col gap-2"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">{getCategoryEmoji(category)}</span>
+                    <span className="text-white font-semibold text-lg">{category}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-400">
+                    <span>Spent</span>
+                    <span>₹{budget.spent.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-400">
+                    <span>Limit</span>
+                    <span>₹{budget.limit.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2 mt-1">
+                    <div
+                      className={`h-2 rounded-full ${percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{percent.toFixed(0)}% used</div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
     </div>
